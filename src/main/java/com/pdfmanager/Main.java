@@ -15,7 +15,7 @@ public class Main {
             return;
         }
 
-        System.out.println("Hello World!");
-        CLI.checkFirstAccess(db);
+        CLI.printWelcomeMessage();
+        CLI.printOptions(db);
     }
 }
