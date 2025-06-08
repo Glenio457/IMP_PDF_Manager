@@ -11,6 +11,7 @@ import java.util.Scanner;
 public class UserInterface {
     private String isFirstAccess;
     private final FileManager fileManager;
+    private final DatabaseManager db;
 
     // Colored text constants
     public static final String RESET = "\u001B[0m";
@@ -19,9 +20,10 @@ public class UserInterface {
     public static final String YELLOW = "\u001B[33m";
     public static final String BLUE = "\u001B[34m";
 
-    public UserInterface() {
+    public UserInterface(DatabaseManager db) {
         this.isFirstAccess = "true";
         this.fileManager = new FileManager();
+        this.db = db;
     }
 
     /**
@@ -35,13 +37,12 @@ public class UserInterface {
 
     /**
      * Prints the available options to the user.
-     * @param db Database
      */
-    public void printOptions(DatabaseManager db) {
+    public void printOptions() {
         // Check if this is the user's first access
-        if (checkFirstAccess(db)) { // If it's the first access do:
+        if (checkFirstAccess()) { // If it's the first access do:
             System.out.println("\n$-----First access detected.-----$");
-            editLibraryPath(db);
+            editLibraryPath();
         } else { // Otherwise do:
             System.out.println("Success!!");
         }
@@ -49,9 +50,8 @@ public class UserInterface {
 
     /**
      * Edits the default library path
-     * @param db Database
      */
-    private void editLibraryPath(DatabaseManager db) {
+    private void editLibraryPath() {
         System.out.println("\nPlease specify a valid path for your library:");
         Scanner scanner = new Scanner(System.in);
         String input1 = scanner.nextLine();
@@ -65,8 +65,8 @@ public class UserInterface {
         System.out.println(GREEN + "\nCreating 'library' directory in path: " + BLUE + input1 + RESET);
 
         if (fileManager.createDirectory(input1, "library")) {
-            updateConfig(db, "libraryPath", input1 + File.separator + "library");
-            updateConfig(db, "isFirstAccess", "false");
+            updateConfig("libraryPath", input1 + File.separator + "library");
+            updateConfig("isFirstAccess", "false");
         } else {
             System.out.println(RED + "Failed to create 'library' directory. The directory may already exist.\n" +
                     RESET + "Do you want to use the pre-existing 'library' directory as the default path?\n" +
@@ -74,25 +74,25 @@ public class UserInterface {
             );
             String input2 = scanner.nextLine();
             if (Objects.equals(input2, "yes") || Objects.equals(input2, "y")) {
-                updateConfig(db, "libraryPath", input1 + File.separator + "library");
-                updateConfig(db, "isFirstAccess", "false");
+                updateConfig("libraryPath", input1 + File.separator + "library");
+                updateConfig("isFirstAccess", "false");
 
             } else if (Objects.equals(input2, "no") || Objects.equals(input2, "n")) {
-                editLibraryPath(db);
+                editLibraryPath();
             } else {
                 System.err.println("Unknown option: '" + input2 + "'");
-                editLibraryPath(db);
+                editLibraryPath();
             }
         }
     }
 
     /**
      * Updates a database field with a specific value
-     * @param db Database
+     *
      * @param field Database field
      * @param value Update value
      */
-    private void updateConfig(DatabaseManager db, String field, String value) {
+    private void updateConfig(String field, String value) {
         try {
             db.writeField(field, value);
         } catch (IOException e) {
@@ -103,10 +103,10 @@ public class UserInterface {
 
     /**
      * Check if it's the first time the user is executing the program
-     * @param db Database
+     *
      * @return Returns <i>true</i> if it's the first time and <i>false</i> otherwise
      */
-    public boolean checkFirstAccess(DatabaseManager db) {
+    public boolean checkFirstAccess() {
         try {
             isFirstAccess = db.readField("isFirstAccess");
         } catch (IOException e) {
