@@ -1,7 +1,7 @@
 package com.pdfmanager.cli;
 
 import com.pdfmanager.db.DatabaseManager;
-import com.pdfmanager.utils.files.FileManager;
+import com.pdfmanager.utils.FileManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,19 +49,41 @@ public class UserInterface {
         if (checkFirstAccess()) { // If it's the first access do:
             System.out.println("\n$-----First access detected.-----$");
             editLibraryPath();
-        } else { // Otherwise do:
-            // Check if file path is valid
-            while(!fileManager.evaluatePath(libraryPath)) {
-                System.out.println(libraryPath);
-                System.out.println(RED + "\nLibrary directory not found" + RESET);
-                editLibraryPath();
-                try {
-                    this.libraryPath = db.readField("libraryPath");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+        }  // Otherwise do:
+        // Check if file path is valid
+        while(!fileManager.evaluatePath(libraryPath)) {
+            System.out.println(libraryPath);
+            System.out.println(RED + "\nLibrary directory not found" + RESET);
+            editLibraryPath();
+            try {
+                this.libraryPath = db.readField("libraryPath");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
+
+        Scanner scanner = new Scanner(System.in);
+        int input1 = -1;
+        while (input1 != 0) {
+            System.out.println("\nChoose one of the options below:\n" +
+                    BLUE + "[1] " + RESET + "Add file\n" +
+                    BLUE + "[2] " + RESET + "List files\n" +
+                    BLUE + "[3] " + RESET + "Remove file\n" +
+                    // Other options
+                    RED + "\n[0] " + RESET + "Quit program"
+            );
+            input1 = scanner.nextInt();
+            // TODO: Implement options
+            switch(input1) {
+                case 0: break;
+                case 1: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                case 2: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                case 3: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                default: System.err.println("Invalid option: '" + input1 + "'"); break;
+            }
+        }
+        System.out.println("Exiting program.");
+        System.exit(0);
     }
 
     /**
@@ -128,11 +150,6 @@ public class UserInterface {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        if (Objects.equals(isFirstAccess, "true")) {
-            System.out.println("Is first access: " + isFirstAccess);
-            return true;
-        }
-        System.out.println("Is first access: " + isFirstAccess);
-        return false;
+        return Objects.equals(isFirstAccess, "true");
     }
 }

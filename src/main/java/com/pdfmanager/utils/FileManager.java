@@ -1,4 +1,4 @@
-package com.pdfmanager.utils.files;
+package com.pdfmanager.utils;
 
 import java.io.File;
 import java.nio.file.Files;
