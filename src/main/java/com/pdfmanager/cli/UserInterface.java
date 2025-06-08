@@ -10,6 +10,7 @@ import java.util.Scanner;
 
 public class UserInterface {
     private String isFirstAccess;
+    private String libraryPath;
     private final FileManager fileManager;
     private final DatabaseManager db;
 
@@ -24,6 +25,11 @@ public class UserInterface {
         this.isFirstAccess = "true";
         this.fileManager = new FileManager();
         this.db = db;
+        try {
+            this.libraryPath = db.readField("libraryPath");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -44,7 +50,17 @@ public class UserInterface {
             System.out.println("\n$-----First access detected.-----$");
             editLibraryPath();
         } else { // Otherwise do:
-            System.out.println("Success!!");
+            // Check if file path is valid
+            while(!fileManager.evaluatePath(libraryPath)) {
+                System.out.println(libraryPath);
+                System.out.println(RED + "\nLibrary directory not found" + RESET);
+                editLibraryPath();
+                try {
+                    this.libraryPath = db.readField("libraryPath");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
     }
 
