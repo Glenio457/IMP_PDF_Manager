@@ -16,9 +16,16 @@ public class DatabaseManager {
         this.dbPath = new File(Objects.requireNonNull(getClass().getResource(database)).getPath());
     }
 
-    public String readField(String name) throws IOException {
+    public String readField(String data) throws IOException {
         ObjectNode object = new ObjectMapper().readValue(dbPath, ObjectNode.class);
-        JsonNode node = object.get(name);
+        JsonNode node = object.get(data);
         return (node == null ? null : node.textValue());
+    }
+
+    public void writeField(String field, String data) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode object = mapper.readValue(dbPath, ObjectNode.class);
+        object.put(field, data);
+        mapper.writeValue(dbPath, object);
     }
 }

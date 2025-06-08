@@ -20,6 +20,19 @@ public class UserInterface {
         System.out.println("#================================#");
     }
 
+    public void printOptions(DatabaseManager db) {
+        // Check if this is the user's first access
+        if (checkFirstAccess(db)) { // If it's the first access do:
+
+        } else { // Otherwise do:
+
+        }
+    }
+
+    private void userFirstAccess() {
+
+    }
+
     public boolean checkFirstAccess(DatabaseManager db) {
         try {
             isFirstAccess = db.readField("isFirstAccess");
@@ -27,10 +40,16 @@ public class UserInterface {
             throw new RuntimeException(e);
         }
         if (Objects.equals(isFirstAccess, "true")) {
-            System.out.println(isFirstAccess);
+            System.out.println("Is first access: " + isFirstAccess);
+            try {
+                db.writeField("isFirstAccess", "false");
+            } catch (IOException e) {
+                System.err.println("ERROR: Failed to update 'isFirstAccess' field in config.json");
+                throw new RuntimeException(e);
+            }
             return true;
         }
-        System.out.println(isFirstAccess);
+        System.out.println("Is first access: " + isFirstAccess);
         return false;
     }
 }

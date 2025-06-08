@@ -9,7 +9,7 @@ public class Main {
         DatabaseManager db;
         UserInterface CLI = new UserInterface();
         try {
-            db = new DatabaseManager("/database.json");
+            db = new DatabaseManager("/config.json");
         } catch (Exception e) {
             System.err.println("ERROR: Invalid database path");
             return;
