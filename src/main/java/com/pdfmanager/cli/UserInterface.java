@@ -82,18 +82,7 @@ public class UserInterface {
             switch(input1) {
                 case 0: break;
                 case 1:
-                    Map<String, Object> buffer = new HashMap<>();
-//                    buffer.put("type", "Book");
-//                    buffer.put("title", "title");
-//                    buffer.put("authors", List.of("author1", "author2"));
-//                    buffer.put("path", "C:\\Users\\User\\Documents");
-//                    buffer.put("subTitle", "subtitle");
-//                    buffer.put("fieldOfKnowledge", "bullshit");
-//                    buffer.put("publishYear", "2025");
-
-                    if (db.writeObject(buffer)) {
-                        System.out.println(GREEN + buffer.get("type") + " added successfully" + RESET);
-                    }
+                    addFile();
                     break;
                 case 2: throw new UnsupportedOperationException("Not implemented yet"); //break;
                 case 3: throw new UnsupportedOperationException("Not implemented yet"); //break;
@@ -102,6 +91,108 @@ public class UserInterface {
         }
         System.out.println("Exiting program.");
         System.exit(0);
+    }
+
+    private void addFile() {
+        Map<String, Object> buffer = new HashMap<>();
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Which file type you wish to add?\n" +
+                BLUE + "[1] " + RESET + "Book\n" +
+                BLUE + "[2] " + RESET + "Class note\n" +
+                BLUE + "[3] " + RESET + "Slide\n"
+        );
+        // Get file type
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+        // Get title
+        System.out.println("Type the title of the file: ");
+        String input2;
+        try {
+            input2 = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read title from input stream.");
+            System.err.flush();
+            return;
+        }
+        buffer.put("title", input2);
+        // Get authors
+        System.out.println("Type the name of the authors (separated by commas): ");
+        try {
+            input2 = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read authors from input stream.");
+            return;
+        }
+        List<String> authors = Arrays.asList(input2.split("\\s*,\\s*"));
+        buffer.put("authors", authors);
+        // Get path
+        System.out.println("Type the path in which the file is located: ");
+        try {
+            input2 = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read path from input stream.");
+            return;
+        }
+        if (fileManager.evaluatePath(input2)) {
+            buffer.put("path", input2);
+        } else {
+            System.err.println("\nPath '" + input2 + "' is not a valid path.\n");
+            System.err.flush();
+            return;
+        }
+        // Now let's define class specific fields
+        if (input1 == 1) {
+            buffer.put("type", "Book");
+            // Get subtitle
+            System.out.println("Type the book subtitle: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read subtitle from input stream.");
+                return;
+            }
+            buffer.put("subTitle", input2);
+            System.out.println("Type the book field of knowledge: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read field of knowledge from input stream.");
+                return;
+            }
+            buffer.put("fieldOfKnowledge", input2);
+            System.out.println("Type the year in which the book was published: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read book publish year from input stream.");
+                return;
+            }
+            buffer.put("publishYear", input2);
+        } else if (input1 == 2) {
+            buffer.put("type", "ClassNote");
+        } else {
+            buffer.put("type", "Slide");
+        }
+
+//                    buffer.put("publishYear", "2025");
+
+        if (db.writeObject(buffer)) {
+            System.out.println(GREEN + "\n" + buffer.get("type") + " added successfully" + RESET);
+        }
     }
 
     /**
