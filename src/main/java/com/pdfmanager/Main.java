@@ -8,7 +8,7 @@ public class Main {
     public static void main(String[] args) {
         DatabaseManager db;
         try {
-            db = new DatabaseManager("/config.json");
+            db = new DatabaseManager();
         } catch (Exception e) {
             System.err.println("ERROR: Invalid database path");
             return;

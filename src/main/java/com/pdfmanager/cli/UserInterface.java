@@ -13,6 +13,7 @@ public class UserInterface {
     private String libraryPath;
     private final FileManager fileManager;
     private final DatabaseManager db;
+    private final File configPath;
 
     // Colored text constants
     public static final String RESET = "\u001B[0m";
@@ -25,8 +26,9 @@ public class UserInterface {
         this.isFirstAccess = "true";
         this.fileManager = new FileManager();
         this.db = db;
+        configPath = db.getConfigPath();
         try {
-            this.libraryPath = db.readField("libraryPath");
+            this.libraryPath = db.readField(configPath, "libraryPath");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -49,14 +51,18 @@ public class UserInterface {
         if (checkFirstAccess()) { // If it's the first access do:
             System.out.println("\n$-----First access detected.-----$");
             editLibraryPath();
+            try {
+                this.libraryPath = db.readField(configPath, "libraryPath");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }  // Otherwise do:
         // Check if file path is valid
         while(!fileManager.evaluatePath(libraryPath)) {
-            System.out.println(libraryPath);
             System.out.println(RED + "\nLibrary directory not found" + RESET);
             editLibraryPath();
             try {
-                this.libraryPath = db.readField("libraryPath");
+                this.libraryPath = db.readField(configPath, "libraryPath");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -126,13 +132,12 @@ public class UserInterface {
 
     /**
      * Updates a database field with a specific value
-     *
      * @param field Database field
      * @param value Update value
      */
     private void updateConfig(String field, String value) {
         try {
-            db.writeField(field, value);
+            db.writeField(configPath, field, value);
         } catch (IOException e) {
             System.err.println("ERROR: Failed to update '" + field + "' field in config.json");
             throw new RuntimeException(e);
@@ -146,7 +151,7 @@ public class UserInterface {
      */
     public boolean checkFirstAccess() {
         try {
-            isFirstAccess = db.readField("isFirstAccess");
+            isFirstAccess = db.readField(configPath, "isFirstAccess");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
