@@ -5,8 +5,7 @@ import com.pdfmanager.utils.FileManager;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
-import java.util.Scanner;
+import java.util.*;
 
 public class UserInterface {
     private String isFirstAccess;
@@ -82,7 +81,20 @@ public class UserInterface {
             // TODO: Implement options
             switch(input1) {
                 case 0: break;
-                case 1: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                case 1:
+                    Map<String, Object> buffer = new HashMap<>();
+//                    buffer.put("type", "Book");
+//                    buffer.put("title", "title");
+//                    buffer.put("authors", List.of("author1", "author2"));
+//                    buffer.put("path", "C:\\Users\\User\\Documents");
+//                    buffer.put("subTitle", "subtitle");
+//                    buffer.put("fieldOfKnowledge", "bullshit");
+//                    buffer.put("publishYear", "2025");
+
+                    if (db.writeObject(buffer)) {
+                        System.out.println(GREEN + buffer.get("type") + " added successfully" + RESET);
+                    }
+                    break;
                 case 2: throw new UnsupportedOperationException("Not implemented yet"); //break;
                 case 3: throw new UnsupportedOperationException("Not implemented yet"); //break;
                 default: System.err.println("Invalid option: '" + input1 + "'"); break;
