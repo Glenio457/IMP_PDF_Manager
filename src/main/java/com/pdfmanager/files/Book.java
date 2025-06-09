@@ -5,13 +5,13 @@ import java.util.List;
 public class Book extends Document {
     private String subTitle;
     private String fieldOfKnowledge;
-    private String publishYear;
+    private int publishYear;
 
     public Book() {
         super();
     }
 
-    public Book(String title, String path, List<String> authors, String subTitle, String fieldOfKnowledge, String publishYear) {
+    public Book(String title, String path, List<String> authors, String subTitle, String fieldOfKnowledge, int publishYear) {
         super(title, path, authors);
         this.subTitle = subTitle;
         this.fieldOfKnowledge = fieldOfKnowledge;
@@ -34,11 +34,11 @@ public class Book extends Document {
         this.fieldOfKnowledge = fieldOfKnowledge;
     }
 
-    public String getPublishYear() {
+    public int getPublishYear() {
         return publishYear;
     }
 
-    public void setPublishYear(String publishYear) {
+    public void setPublishYear(int publishYear) {
         this.publishYear = publishYear;
     }
 

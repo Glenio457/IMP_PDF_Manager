@@ -70,7 +70,7 @@ public class DatabaseManager {
         }
 
         if (buffer.get("type") == "Book") {
-            addBookToDB(buffer);
+            return addBookToDB(buffer);
 
         } else if (buffer.get("type") == "Slide") {
             addSlideToDB(buffer);
@@ -87,7 +87,7 @@ public class DatabaseManager {
     }
 
     @SuppressWarnings("unchecked")
-    private void addBookToDB(Map<String, Object> buffer) {
+    private boolean addBookToDB(Map<String, Object> buffer) {
         ObjectMapper mapper = new ObjectMapper();
         List<Object> bookList;
         try {
@@ -101,7 +101,13 @@ public class DatabaseManager {
         book.setAuthors((List<String>) buffer.get("authors"));
         book.setSubTitle((String) buffer.get("subTitle"));
         book.setFieldOfKnowledge((String) buffer.get("fieldOfKnowledge"));
-        book.setPublishYear((String) buffer.get("publishYear"));
+        try {
+            book.setPublishYear(Integer.parseInt((String) buffer.get("publishYear")));
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return false;
+        }
 
         bookList.add(book);
         try {
@@ -110,6 +116,8 @@ public class DatabaseManager {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        return true;
     }
 
     @SuppressWarnings("unchecked")

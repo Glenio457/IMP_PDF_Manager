@@ -166,6 +166,7 @@ public class UserInterface {
                 return;
             }
             buffer.put("subTitle", input2);
+            // Get field of knowledge
             System.out.println("Type the book field of knowledge: ");
             try {
                 input2 = scanner.nextLine();
@@ -174,7 +175,11 @@ public class UserInterface {
                 return;
             }
             buffer.put("fieldOfKnowledge", input2);
+            // Get publish year
             System.out.println("Type the year in which the book was published: ");
+            // Value of publish year needs to be an integer number as it will be converted to integer in the
+            // writeObject function. If the value is not an integer, it will generate a NumberFormatException
+            // which is treated by the writeObject function.
             try {
                 input2 = scanner.nextLine();
             } catch (Exception e) {
@@ -187,8 +192,6 @@ public class UserInterface {
         } else {
             buffer.put("type", "Slide");
         }
-
-//                    buffer.put("publishYear", "2025");
 
         if (db.writeObject(buffer)) {
             System.out.println(GREEN + "\n" + buffer.get("type") + " added successfully" + RESET);
