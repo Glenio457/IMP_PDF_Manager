@@ -5,14 +5,14 @@ import com.pdfmanager.utils.FileManager;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
-import java.util.Scanner;
+import java.util.*;
 
 public class UserInterface {
     private String isFirstAccess;
     private String libraryPath;
     private final FileManager fileManager;
     private final DatabaseManager db;
+    private final File configPath;
 
     // Colored text constants
     public static final String RESET = "\u001B[0m";
@@ -25,8 +25,9 @@ public class UserInterface {
         this.isFirstAccess = "true";
         this.fileManager = new FileManager();
         this.db = db;
+        configPath = db.getConfigPath();
         try {
-            this.libraryPath = db.readField("libraryPath");
+            this.libraryPath = db.readField(configPath, "libraryPath");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -49,14 +50,18 @@ public class UserInterface {
         if (checkFirstAccess()) { // If it's the first access do:
             System.out.println("\n$-----First access detected.-----$");
             editLibraryPath();
+            try {
+                this.libraryPath = db.readField(configPath, "libraryPath");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }  // Otherwise do:
         // Check if file path is valid
         while(!fileManager.evaluatePath(libraryPath)) {
-            System.out.println(libraryPath);
             System.out.println(RED + "\nLibrary directory not found" + RESET);
             editLibraryPath();
             try {
-                this.libraryPath = db.readField("libraryPath");
+                this.libraryPath = db.readField(configPath, "libraryPath");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -76,7 +81,9 @@ public class UserInterface {
             // TODO: Implement options
             switch(input1) {
                 case 0: break;
-                case 1: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                case 1:
+                    addFile();
+                    break;
                 case 2: throw new UnsupportedOperationException("Not implemented yet"); //break;
                 case 3: throw new UnsupportedOperationException("Not implemented yet"); //break;
                 default: System.err.println("Invalid option: '" + input1 + "'"); break;
@@ -84,6 +91,111 @@ public class UserInterface {
         }
         System.out.println("Exiting program.");
         System.exit(0);
+    }
+
+    private void addFile() {
+        Map<String, Object> buffer = new HashMap<>();
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Which file type you wish to add?\n" +
+                BLUE + "[1] " + RESET + "Book\n" +
+                BLUE + "[2] " + RESET + "Class note\n" +
+                BLUE + "[3] " + RESET + "Slide\n"
+        );
+        // Get file type
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+        // Get title
+        System.out.println("Type the title of the file: ");
+        String input2;
+        try {
+            input2 = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read title from input stream.");
+            System.err.flush();
+            return;
+        }
+        buffer.put("title", input2);
+        // Get authors
+        System.out.println("Type the name of the authors (separated by commas): ");
+        try {
+            input2 = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read authors from input stream.");
+            return;
+        }
+        List<String> authors = Arrays.asList(input2.split("\\s*,\\s*"));
+        buffer.put("authors", authors);
+        // Get path
+        System.out.println("Type the path in which the file is located: ");
+        try {
+            input2 = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read path from input stream.");
+            return;
+        }
+        if (fileManager.evaluatePath(input2)) {
+            buffer.put("path", input2);
+        } else {
+            System.err.println("\nPath '" + input2 + "' is not a valid path.\n");
+            System.err.flush();
+            return;
+        }
+        // Now let's define class specific fields
+        if (input1 == 1) {
+            buffer.put("type", "Book");
+            // Get subtitle
+            System.out.println("Type the book subtitle: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read subtitle from input stream.");
+                return;
+            }
+            buffer.put("subTitle", input2);
+            // Get field of knowledge
+            System.out.println("Type the book field of knowledge: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read field of knowledge from input stream.");
+                return;
+            }
+            buffer.put("fieldOfKnowledge", input2);
+            // Get publish year
+            System.out.println("Type the year in which the book was published: ");
+            // Value of publish year needs to be an integer number as it will be converted to integer in the
+            // writeObject function. If the value is not an integer, it will generate a NumberFormatException
+            // which is treated by the writeObject function.
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read book publish year from input stream.");
+                return;
+            }
+            buffer.put("publishYear", input2);
+        } else if (input1 == 2) {
+            buffer.put("type", "ClassNote");
+        } else {
+            buffer.put("type", "Slide");
+        }
+
+        if (db.writeObject(buffer)) {
+            System.out.println(GREEN + "\n" + buffer.get("type") + " added successfully" + RESET);
+        }
     }
 
     /**
@@ -126,13 +238,12 @@ public class UserInterface {
 
     /**
      * Updates a database field with a specific value
-     *
      * @param field Database field
      * @param value Update value
      */
     private void updateConfig(String field, String value) {
         try {
-            db.writeField(field, value);
+            db.writeField(configPath, field, value);
         } catch (IOException e) {
             System.err.println("ERROR: Failed to update '" + field + "' field in config.json");
             throw new RuntimeException(e);
@@ -146,7 +257,7 @@ public class UserInterface {
      */
     public boolean checkFirstAccess() {
         try {
-            isFirstAccess = db.readField("isFirstAccess");
+            isFirstAccess = db.readField(configPath, "isFirstAccess");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
