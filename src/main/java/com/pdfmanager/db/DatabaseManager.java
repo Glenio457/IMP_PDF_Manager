@@ -38,6 +38,12 @@ public class DatabaseManager {
         return (node == null ? null : node.textValue());
     }
 
+    /**
+     * Reads a file in the database and returns it as an object list
+     * @param dbPath The path to the file
+     * @return       The content of the file in List format
+     * @throws IOException Throws an exception if file does not exist
+     */
     public List<Object> readFile(File dbPath) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         return new ArrayList<>(Arrays.asList(mapper.readValue(dbPath, Object[].class)));
@@ -70,7 +76,7 @@ public class DatabaseManager {
         }
 
         if (buffer.get("type") == "Book") {
-            return addBookToDB(buffer);
+            addBookToDB(buffer);
 
         } else if (buffer.get("type") == "Slide") {
             addSlideToDB(buffer);
@@ -87,7 +93,7 @@ public class DatabaseManager {
     }
 
     @SuppressWarnings("unchecked")
-    private boolean addBookToDB(Map<String, Object> buffer) {
+    private void addBookToDB(Map<String, Object> buffer) {
         ObjectMapper mapper = new ObjectMapper();
         List<Object> bookList;
         try {
@@ -106,7 +112,6 @@ public class DatabaseManager {
         } catch (Exception e) {
             System.err.println("ERROR: Invalid input value. Value should be a integer.");
             System.err.flush();
-            return false;
         }
 
         bookList.add(book);
@@ -116,8 +121,6 @@ public class DatabaseManager {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        return true;
     }
 
     @SuppressWarnings("unchecked")
@@ -125,7 +128,7 @@ public class DatabaseManager {
         ObjectMapper mapper = new ObjectMapper();
         List<Object> slideList;
         try {
-            slideList = readFile(booksPath);
+            slideList = readFile(slidesPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -150,7 +153,7 @@ public class DatabaseManager {
         ObjectMapper mapper = new ObjectMapper();
         List<Object> classNoteList;
         try {
-            classNoteList = readFile(booksPath);
+            classNoteList = readFile(classNotesPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -173,5 +176,17 @@ public class DatabaseManager {
 
     public File getConfigPath() {
         return configPath;
+    }
+
+    public File getBooksPath() {
+        return booksPath;
+    }
+
+    public File getSlidesPath() {
+        return slidesPath;
+    }
+
+    public File getClassNotesPath() {
+        return classNotesPath;
     }
 }

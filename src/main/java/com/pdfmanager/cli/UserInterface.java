@@ -1,6 +1,11 @@
 package com.pdfmanager.cli;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pdfmanager.db.DatabaseManager;
+import com.pdfmanager.files.Book;
+import com.pdfmanager.files.ClassNote;
+import com.pdfmanager.files.Slide;
 import com.pdfmanager.utils.FileManager;
 
 import java.io.File;
@@ -84,7 +89,9 @@ public class UserInterface {
                 case 1:
                     addFile();
                     break;
-                case 2: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                case 2:
+                    listFiles();
+                    break;
                 case 3: throw new UnsupportedOperationException("Not implemented yet"); //break;
                 default: System.err.println("Invalid option: '" + input1 + "'"); break;
             }
@@ -189,12 +196,167 @@ public class UserInterface {
             buffer.put("publishYear", input2);
         } else if (input1 == 2) {
             buffer.put("type", "ClassNote");
+            // Get subtitle
+            System.out.println("Type the class note subtitle: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read subtitle from input stream.");
+                return;
+            }
+            buffer.put("subTitle", input2);
+            // Get lecture name
+            System.out.println("Type the lecture name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read lecture name from input stream.");
+                return;
+            }
+            buffer.put("lectureName", input2);
+            // Get institution name
+            System.out.println("Type the institution name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read institution name from input stream.");
+                return;
+            }
+            buffer.put("institutionName", input2);
         } else {
             buffer.put("type", "Slide");
+            // Get lecture name
+            System.out.println("Type the lecture name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read lecture name from input stream.");
+                return;
+            }
+            buffer.put("lectureName", input2);
+            // Get institution name
+            System.out.println("Type the institution name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read institution name from input stream.");
+                return;
+            }
+            buffer.put("institutionName", input2);
         }
 
         if (db.writeObject(buffer)) {
             System.out.println(GREEN + "\n" + buffer.get("type") + " added successfully" + RESET);
+        }
+    }
+
+    private void listFiles() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("What files do you want to list?\n" +
+                BLUE + "[1] " + RESET + "Books\n" +
+                BLUE + "[2] " + RESET + "Class notes\n" +
+                BLUE + "[3] " + RESET + "Slides\n" +
+                BLUE + "[4] " + RESET + "All\n"
+        );
+        // Get listing option
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3 && input1 != 4) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+
+        if (input1 == 1) {
+            printBooks();
+        }
+        else if (input1 == 2) {
+            printClassNotes();
+        }
+        else if (input1 == 3) {
+            printSlides();
+        }
+        else {
+            printBooks();
+            printClassNotes();
+            printSlides();
+        }
+    }
+
+    private void printBooks() {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Book> bookList;
+        try {
+            bookList = mapper.readValue(db.getBooksPath(), new  TypeReference<>() {});
+        } catch (IOException e) {
+            System.err.println("ERROR: Failed to read database.");
+            System.err.flush();
+            return;
+        }
+
+        for (Book book : bookList) {
+            System.out.println(YELLOW + "#===============================================================#");
+            System.out.println(GREEN + "Type: Book" + RESET);
+            System.out.println(BLUE + "Title: " + book.getTitle() + RESET);
+            System.out.println(BLUE + "Subtitle: " + book.getSubTitle() + RESET);
+            System.out.println(BLUE + "Authors: " + book.getAuthors() + RESET);
+            System.out.println(BLUE + "Field of knowledge: " + book.getFieldOfKnowledge() + RESET);
+            System.out.println(BLUE + "Year: " + book.getPublishYear() + RESET);
+            System.out.println(BLUE + "Path: " + book.getPath() + RESET);
+        }
+    }
+
+    private void printClassNotes() {
+        ObjectMapper mapper = new ObjectMapper();
+        List<ClassNote> classNoteList;
+        try {
+            classNoteList = mapper.readValue(db.getClassNotesPath(), new  TypeReference<>() {});
+        } catch (IOException e) {
+            System.err.println("ERROR: Failed to read database.");
+            System.err.flush();
+            return;
+        }
+
+        for (ClassNote classNote : classNoteList) {
+            System.out.println(YELLOW + "#===============================================================#");
+            System.out.println(GREEN + "Type: Class note" + RESET);
+            System.out.println(BLUE + "Title: " + classNote.getTitle() + RESET);
+            System.out.println(BLUE + "Subtitle: " + classNote.getSubTitle() + RESET);
+            System.out.println(BLUE + "Authors: " + classNote.getAuthors() + RESET);
+            System.out.println(BLUE + "Lecture: " + classNote.getLectureName() + RESET);
+            System.out.println(BLUE + "Institution: " + classNote.getInstitutionName() + RESET);
+            System.out.println(BLUE + "Path: " + classNote.getPath() + RESET);
+        }
+    }
+
+    private void printSlides() {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Slide> slideList;
+        try {
+            slideList = mapper.readValue(db.getSlidesPath(), new  TypeReference<>() {});
+        } catch (IOException e) {
+            System.err.println("ERROR: Failed to read database.");
+            System.err.flush();
+            return;
+        }
+
+        for (Slide slide : slideList) {
+            System.out.println(YELLOW + "#===============================================================#");
+            System.out.println(GREEN + "Type: Slide" + RESET);
+            System.out.println(BLUE + "Title: " + slide.getTitle() + RESET);
+            System.out.println(BLUE + "Authors: " + slide.getAuthors() + RESET);
+            System.out.println(BLUE + "Lecture: " + slide.getLectureName() + RESET);
+            System.out.println(BLUE + "Institution: " + slide.getInstitutionName() + RESET);
+            System.out.println(BLUE + "Path: " + slide.getPath() + RESET);
         }
     }
 
