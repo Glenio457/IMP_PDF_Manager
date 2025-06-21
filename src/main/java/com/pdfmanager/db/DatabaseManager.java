@@ -2,14 +2,18 @@ package com.pdfmanager.db;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pdfmanager.files.Book;
 import com.pdfmanager.files.ClassNote;
 import com.pdfmanager.files.Slide;
+import io.restassured.path.json.JsonPath;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+
+import static com.pdfmanager.cli.UserInterface.*;
 
 public class DatabaseManager {
 
@@ -44,7 +48,7 @@ public class DatabaseManager {
      * @return       The content of the file in List format
      * @throws IOException Throws an exception if file does not exist
      */
-    public List<Object> readFile(File dbPath) throws IOException {
+    public List<Object> readFileAsList(File dbPath) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         return new ArrayList<>(Arrays.asList(mapper.readValue(dbPath, Object[].class)));
     }
@@ -61,6 +65,26 @@ public class DatabaseManager {
         ObjectNode object = mapper.readValue(dbPath, ObjectNode.class);
         object.put(field, data);
         mapper.writeValue(dbPath, object);
+    }
+
+    public void removeEntry(File dbPath, String title) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode root = (ArrayNode) mapper.readTree(dbPath);
+        boolean removed = false;
+
+        for (int i = root.size() - 1; i >= 0; i--) {
+            JsonNode item = root.get(i);
+            if (item.get("title").asText().equals(title)) {
+                root.remove(i);
+                removed = true;
+            }
+        }
+        if (!removed) {
+            System.out.println(RED + "Entry '" + title + "' not found in database." + RESET);
+            return;
+        }
+        mapper.writerWithDefaultPrettyPrinter().writeValue(dbPath, root);
+        //Map<String, Object> entry = JsonPath.from(dbPath).get("findAll { title == '" + field +  "'}");
     }
 
     /**
@@ -97,7 +121,7 @@ public class DatabaseManager {
         ObjectMapper mapper = new ObjectMapper();
         List<Object> bookList;
         try {
-            bookList = readFile(booksPath);
+            bookList = readFileAsList(booksPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -128,7 +152,7 @@ public class DatabaseManager {
         ObjectMapper mapper = new ObjectMapper();
         List<Object> slideList;
         try {
-            slideList = readFile(slidesPath);
+            slideList = readFileAsList(slidesPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -153,7 +177,7 @@ public class DatabaseManager {
         ObjectMapper mapper = new ObjectMapper();
         List<Object> classNoteList;
         try {
-            classNoteList = readFile(classNotesPath);
+            classNoteList = readFileAsList(classNotesPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

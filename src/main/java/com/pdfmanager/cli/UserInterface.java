@@ -92,12 +92,63 @@ public class UserInterface {
                 case 2:
                     listFiles();
                     break;
-                case 3: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                case 3:
+                    removeFile();
+                    break;
                 default: System.err.println("Invalid option: '" + input1 + "'"); break;
             }
         }
         System.out.println("Exiting program.");
         System.exit(0);
+    }
+
+    private void removeFile() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Which file type you wish to remove?\n" +
+                BLUE + "[1] " + RESET + "Book\n" +
+                BLUE + "[2] " + RESET + "Class note\n" +
+                BLUE + "[3] " + RESET + "Slide\n"
+        );
+        // Get file type
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+        // Get title
+        System.out.println("Type the name of the file you wish to remove.");
+        String fileName;
+        try {
+            fileName = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read title from input stream.");
+            System.err.flush();
+            return;
+        }
+        File path;
+
+        if (input1 == 1) path = db.getBooksPath();
+        else if (input1 == 2) path = db.getClassNotesPath();
+        else path = db.getSlidesPath();
+
+        try {
+            db.removeEntry(path, fileName);
+            System.out.println(GREEN + "Successfully removed '" + fileName + "' from database." + RESET);
+        } catch (IOException e) {
+            System.err.println("ERROR: " + e.getMessage());
+        }
+
     }
 
     private void addFile() {
