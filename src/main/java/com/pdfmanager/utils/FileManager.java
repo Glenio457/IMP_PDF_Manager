@@ -32,6 +32,14 @@ public class FileManager {
         }
     }
 
+    public void removeFile(File file) {
+        if (file.delete()) {
+            System.out.println("File '" + file.getName() + "' has been deleted.");
+        } else {
+            System.err.println("File '" + file.getName() + "' could not be deleted.");
+        }
+    }
+
     /**
      * Creates a directory with the specified parameters.
      * @param path Path in which the directory should be created.

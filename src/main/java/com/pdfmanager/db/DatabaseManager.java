@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pdfmanager.files.Book;
 import com.pdfmanager.files.ClassNote;
 import com.pdfmanager.files.Slide;
+import io.restassured.path.json.JsonPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,23 +67,26 @@ public class DatabaseManager {
         mapper.writeValue(dbPath, object);
     }
 
-    public void removeEntry(File dbPath, String title) throws IOException {
+    public String removeEntry(File dbPath, String title, String info) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode root = (ArrayNode) mapper.readTree(dbPath);
         boolean removed = false;
+        String data = null;
 
         for (int i = root.size() - 1; i >= 0; i--) {
             JsonNode item = root.get(i);
             if (item.get("title").asText().equals(title)) {
+                data = JsonPath.from(dbPath).get("find { it.title == '" + title +  "'}." + info);
                 root.remove(i);
                 removed = true;
             }
         }
         if (!removed) {
             System.out.println(RED + "Entry '" + title + "' not found in database." + RESET);
-            return;
+            return null;
         }
         mapper.writerWithDefaultPrettyPrinter().writeValue(dbPath, root);
+        return data;
         //Map<String, Object> entry = JsonPath.from(dbPath).get("findAll { title == '" + field +  "'}");
     }
 

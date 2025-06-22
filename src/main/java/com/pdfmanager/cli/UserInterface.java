@@ -76,10 +76,16 @@ public class UserInterface {
         Scanner scanner = new Scanner(System.in);
         int input1 = -1;
         while (input1 != 0) {
+            try {
+                System.out.println(GREEN + "\nCurrent library: " + BLUE + db.getLibraryPath() + RESET);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             System.out.println("\nChoose one of the options below:\n" +
                     BLUE + "[1] " + RESET + "Add file\n" +
                     BLUE + "[2] " + RESET + "List files\n" +
                     BLUE + "[3] " + RESET + "Remove file\n" +
+                    BLUE + "[4] " + RESET + "Change library\n" +
                     // Other options
                     RED + "\n[0] " + RESET + "Quit program"
             );
@@ -95,6 +101,9 @@ public class UserInterface {
                     break;
                 case 3:
                     removeFile();
+                    break;
+                case 4:
+                    editLibraryPath();
                     break;
                 default: System.err.println("Invalid option: '" + input1 + "'"); break;
             }
@@ -144,8 +153,10 @@ public class UserInterface {
         else path = db.getSlidesPath();
 
         try {
-            db.removeEntry(path, fileName);
+            String author = db.removeEntry(path, fileName, "authors[0]");
             System.out.println(GREEN + "Successfully removed '" + fileName + "' from database." + RESET);
+            String filePath = db.getLibraryPath() + File.separator + author + File.separator + fileName;
+            fileManager.removeFile(new File(filePath));
         } catch (IOException e) {
             System.err.println("ERROR: " + e.getMessage());
         }
@@ -446,19 +457,22 @@ public class UserInterface {
             input1 = scanner.nextLine();
         }
 
-        System.out.println(GREEN + "\nCreating 'library' directory in path: " + BLUE + input1 + RESET);
+        System.out.println("\nPlease specify a name for the library:");
+        String libraryName = scanner.nextLine();
 
-        if (fileManager.createDirectory(input1, "library")) {
-            updateConfig("libraryPath", input1 + File.separator + "library");
+        System.out.println(GREEN + "\nCreating '" + libraryName + "' directory in path: " + BLUE + input1 + RESET);
+
+        if (fileManager.createDirectory(input1, libraryName)) {
+            updateConfig("libraryPath", input1 + File.separator + libraryName);
             updateConfig("isFirstAccess", "false");
         } else {
-            System.out.println(RED + "Failed to create 'library' directory. The directory may already exist.\n" +
-                    RESET + "Do you want to use the pre-existing 'library' directory as the default path?\n" +
-                    "Keep in mind that any data present in the 'library' might be altered." + BLUE + "(y/n)" + RESET
+            System.out.println(RED + "Failed to create '" + libraryName + "' directory. The directory may already exist.\n" +
+                    RESET + "Do you want to use '" + libraryName + "' as the default path?\n" +
+                    "Keep in mind that any data present in '" + libraryName + "' might be altered." + BLUE + "(y/n)" + RESET
             );
             String input2 = scanner.nextLine();
             if (Objects.equals(input2, "yes") || Objects.equals(input2, "y")) {
-                updateConfig("libraryPath", input1 + File.separator + "library");
+                updateConfig("libraryPath", input1 + File.separator + libraryName);
                 updateConfig("isFirstAccess", "false");
 
             } else if (Objects.equals(input2, "no") || Objects.equals(input2, "n")) {
