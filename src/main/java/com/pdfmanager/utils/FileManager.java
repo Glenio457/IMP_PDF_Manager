@@ -1,9 +1,11 @@
 package com.pdfmanager.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 public class FileManager {
 
@@ -15,6 +17,19 @@ public class FileManager {
     public boolean evaluatePath(String input) {
         Path path = Paths.get(input);
         return Files.exists(path) && Files.isDirectory(path);
+    }
+
+    /**
+     * Copies a file to the library.
+     * @param filePath Source path.
+     * @param destination Destination path.
+     */
+    public void copyFileToLibrary(String filePath, String destination) {
+        try {
+            Files.copy(Path.of(filePath), Path.of(destination), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            System.err.println("ERROR: Unable to copy file to library.");
+        }
     }
 
     /**

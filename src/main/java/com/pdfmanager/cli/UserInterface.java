@@ -7,6 +7,7 @@ import com.pdfmanager.files.Book;
 import com.pdfmanager.files.ClassNote;
 import com.pdfmanager.files.Slide;
 import com.pdfmanager.utils.FileManager;
+import io.restassured.path.json.JsonPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -297,8 +298,28 @@ public class UserInterface {
         }
 
         if (db.writeObject(buffer)) {
-            System.out.println(GREEN + "\n" + buffer.get("type") + " added successfully" + RESET);
+            String title = buffer.get("title").toString();
+            String type = buffer.get("type").toString();
+            File path;
+            if (type.equals("Book")) path = db.getBooksPath();
+            else if (type.equals("ClassNote")) path = db.getClassNotesPath();
+            else path = db.getSlidesPath();
+            try {
+                addToLibrary(title, path);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println(GREEN + "\n" + type + " added successfully" + RESET);
         }
+    }
+
+    private void addToLibrary(String fileName, File dbPath) throws IOException {
+        String path = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.path");
+        String author = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.authors[0]");
+        fileManager.createDirectory(db.getLibraryPath(), author);
+        String subDirectory = db.getLibraryPath() + File.separator + author;
+        fileManager.copyFileToLibrary(path + File.separator + fileName,
+                subDirectory +  File.separator + fileName);
     }
 
     private void listFiles() {

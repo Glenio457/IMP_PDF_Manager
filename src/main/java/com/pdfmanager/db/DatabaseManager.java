@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pdfmanager.files.Book;
 import com.pdfmanager.files.ClassNote;
 import com.pdfmanager.files.Slide;
-import io.restassured.path.json.JsonPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -212,5 +211,9 @@ public class DatabaseManager {
 
     public File getClassNotesPath() {
         return classNotesPath;
+    }
+
+    public String getLibraryPath() throws IOException {
+        return readField(configPath, "libraryPath");
     }
 }
