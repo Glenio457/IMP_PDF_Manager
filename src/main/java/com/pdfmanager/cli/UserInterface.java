@@ -1,7 +1,13 @@
 package com.pdfmanager.cli;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pdfmanager.db.DatabaseManager;
+import com.pdfmanager.files.Book;
+import com.pdfmanager.files.ClassNote;
+import com.pdfmanager.files.Slide;
 import com.pdfmanager.utils.FileManager;
+import io.restassured.path.json.JsonPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,10 +76,17 @@ public class UserInterface {
         Scanner scanner = new Scanner(System.in);
         int input1 = -1;
         while (input1 != 0) {
+            try {
+                System.out.println(GREEN + "\nCurrent library: " + BLUE + db.getLibraryPath() + RESET);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             System.out.println("\nChoose one of the options below:\n" +
                     BLUE + "[1] " + RESET + "Add file\n" +
                     BLUE + "[2] " + RESET + "List files\n" +
                     BLUE + "[3] " + RESET + "Remove file\n" +
+                    BLUE + "[4] " + RESET + "Change library\n" +
+                    BLUE + "[5] " + RESET + "Edit entry\n" +
                     // Other options
                     RED + "\n[0] " + RESET + "Quit program"
             );
@@ -84,13 +97,74 @@ public class UserInterface {
                 case 1:
                     addFile();
                     break;
-                case 2: throw new UnsupportedOperationException("Not implemented yet"); //break;
-                case 3: throw new UnsupportedOperationException("Not implemented yet"); //break;
+                case 2:
+                    listFiles();
+                    break;
+                case 3:
+                    removeFile();
+                    break;
+                case 4:
+                    editLibraryPath();
+                    break;
+                case 5:
+                    editField();
+                    break;
                 default: System.err.println("Invalid option: '" + input1 + "'"); break;
             }
         }
         System.out.println("Exiting program.");
         System.exit(0);
+    }
+
+    private void removeFile() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Which file type you wish to remove?\n" +
+                BLUE + "[1] " + RESET + "Book\n" +
+                BLUE + "[2] " + RESET + "Class note\n" +
+                BLUE + "[3] " + RESET + "Slide\n"
+        );
+        // Get file type
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+        // Get title
+        System.out.println("Type the name of the file you wish to remove.");
+        String fileName;
+        try {
+            fileName = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read title from input stream.");
+            System.err.flush();
+            return;
+        }
+        File path;
+
+        if (input1 == 1) path = db.getBooksPath();
+        else if (input1 == 2) path = db.getClassNotesPath();
+        else path = db.getSlidesPath();
+
+        try {
+            String author = db.removeEntry(path, fileName, "authors[0]");
+            System.out.println(GREEN + "Successfully removed '" + fileName + "' from database." + RESET);
+            String filePath = db.getLibraryPath() + File.separator + author + File.separator + fileName;
+            fileManager.removeFile(new File(filePath));
+        } catch (IOException e) {
+            System.err.println("ERROR: " + e.getMessage());
+        }
+
     }
 
     private void addFile() {
@@ -189,12 +263,234 @@ public class UserInterface {
             buffer.put("publishYear", input2);
         } else if (input1 == 2) {
             buffer.put("type", "ClassNote");
+            // Get subtitle
+            System.out.println("Type the class note subtitle: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read subtitle from input stream.");
+                return;
+            }
+            buffer.put("subTitle", input2);
+            // Get lecture name
+            System.out.println("Type the lecture name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read lecture name from input stream.");
+                return;
+            }
+            buffer.put("lectureName", input2);
+            // Get institution name
+            System.out.println("Type the institution name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read institution name from input stream.");
+                return;
+            }
+            buffer.put("institutionName", input2);
         } else {
             buffer.put("type", "Slide");
+            // Get lecture name
+            System.out.println("Type the lecture name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read lecture name from input stream.");
+                return;
+            }
+            buffer.put("lectureName", input2);
+            // Get institution name
+            System.out.println("Type the institution name: ");
+            try {
+                input2 = scanner.nextLine();
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to read institution name from input stream.");
+                return;
+            }
+            buffer.put("institutionName", input2);
         }
 
         if (db.writeObject(buffer)) {
-            System.out.println(GREEN + "\n" + buffer.get("type") + " added successfully" + RESET);
+            String title = buffer.get("title").toString();
+            String type = buffer.get("type").toString();
+            File path;
+            if (type.equals("Book")) path = db.getBooksPath();
+            else if (type.equals("ClassNote")) path = db.getClassNotesPath();
+            else path = db.getSlidesPath();
+            try {
+                addToLibrary(title, path);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println(GREEN + "\n" + type + " added successfully" + RESET);
+        }
+    }
+
+    private void editField() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Which file type you wish to edit?\n" +
+                BLUE + "[1] " + RESET + "Book\n" +
+                BLUE + "[2] " + RESET + "Class note\n" +
+                BLUE + "[3] " + RESET + "Slide\n"
+        );
+        // Get file type
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+        // Get title
+        System.out.println("Type the name of the file you wish to edit.");
+        String fileName;
+        try {
+            fileName = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read title from input stream.");
+            System.err.flush();
+            return;
+        }
+        File path;
+
+        if (input1 == 1) path = db.getBooksPath();
+        else if (input1 == 2) path = db.getClassNotesPath();
+        else path = db.getSlidesPath();
+
+        try {
+            db.editFieldByTitle(path, fileName);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void addToLibrary(String fileName, File dbPath) throws IOException {
+        String path = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.path");
+        String author = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.authors[0]");
+        fileManager.createDirectory(db.getLibraryPath(), author);
+        String subDirectory = db.getLibraryPath() + File.separator + author;
+        fileManager.copyFileToLibrary(path + File.separator + fileName,
+                subDirectory +  File.separator + fileName);
+    }
+
+    private void listFiles() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("What files do you want to list?\n" +
+                BLUE + "[1] " + RESET + "Books\n" +
+                BLUE + "[2] " + RESET + "Class notes\n" +
+                BLUE + "[3] " + RESET + "Slides\n" +
+                BLUE + "[4] " + RESET + "All\n"
+        );
+        // Get listing option
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3 && input1 != 4) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+
+        if (input1 == 1) {
+            printBooks();
+        }
+        else if (input1 == 2) {
+            printClassNotes();
+        }
+        else if (input1 == 3) {
+            printSlides();
+        }
+        else {
+            printBooks();
+            printClassNotes();
+            printSlides();
+        }
+    }
+
+    private void printBooks() {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Book> bookList;
+        try {
+            bookList = mapper.readValue(db.getBooksPath(), new  TypeReference<>() {});
+        } catch (IOException e) {
+            System.err.println("ERROR: Failed to read database.");
+            System.err.flush();
+            return;
+        }
+
+        for (Book book : bookList) {
+            System.out.println(YELLOW + "#===============================================================#");
+            System.out.println(GREEN + "type: Book" + RESET);
+            System.out.println(BLUE + "title: " + book.getTitle() + RESET);
+            System.out.println(BLUE + "subTitle: " + book.getSubTitle() + RESET);
+            System.out.println(BLUE + "authors: " + book.getAuthors() + RESET);
+            System.out.println(BLUE + "fieldOfKnowledge: " + book.getFieldOfKnowledge() + RESET);
+            System.out.println(BLUE + "publishYear: " + book.getPublishYear() + RESET);
+            System.out.println(BLUE + "path: " + book.getPath() + RESET);
+        }
+    }
+
+    private void printClassNotes() {
+        ObjectMapper mapper = new ObjectMapper();
+        List<ClassNote> classNoteList;
+        try {
+            classNoteList = mapper.readValue(db.getClassNotesPath(), new  TypeReference<>() {});
+        } catch (IOException e) {
+            System.err.println("ERROR: Failed to read database.");
+            System.err.flush();
+            return;
+        }
+
+        for (ClassNote classNote : classNoteList) {
+            System.out.println(YELLOW + "#===============================================================#");
+            System.out.println(GREEN + "type: Class note" + RESET);
+            System.out.println(BLUE + "title: " + classNote.getTitle() + RESET);
+            System.out.println(BLUE + "subTitle: " + classNote.getSubTitle() + RESET);
+            System.out.println(BLUE + "authors: " + classNote.getAuthors() + RESET);
+            System.out.println(BLUE + "lectureName: " + classNote.getLectureName() + RESET);
+            System.out.println(BLUE + "institutionName: " + classNote.getInstitutionName() + RESET);
+            System.out.println(BLUE + "path: " + classNote.getPath() + RESET);
+        }
+    }
+
+    private void printSlides() {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Slide> slideList;
+        try {
+            slideList = mapper.readValue(db.getSlidesPath(), new  TypeReference<>() {});
+        } catch (IOException e) {
+            System.err.println("ERROR: Failed to read database.");
+            System.err.flush();
+            return;
+        }
+
+        for (Slide slide : slideList) {
+            System.out.println(YELLOW + "#===============================================================#");
+            System.out.println(GREEN + "type: Slide" + RESET);
+            System.out.println(BLUE + "title: " + slide.getTitle() + RESET);
+            System.out.println(BLUE + "authors: " + slide.getAuthors() + RESET);
+            System.out.println(BLUE + "lectureName: " + slide.getLectureName() + RESET);
+            System.out.println(BLUE + "institutionName: " + slide.getInstitutionName() + RESET);
+            System.out.println(BLUE + "path: " + slide.getPath() + RESET);
         }
     }
 
@@ -212,19 +508,22 @@ public class UserInterface {
             input1 = scanner.nextLine();
         }
 
-        System.out.println(GREEN + "\nCreating 'library' directory in path: " + BLUE + input1 + RESET);
+        System.out.println("\nPlease specify a name for the library:");
+        String libraryName = scanner.nextLine();
 
-        if (fileManager.createDirectory(input1, "library")) {
-            updateConfig("libraryPath", input1 + File.separator + "library");
+        System.out.println(GREEN + "\nCreating '" + libraryName + "' directory in path: " + BLUE + input1 + RESET);
+
+        if (fileManager.createDirectory(input1, libraryName)) {
+            updateConfig("libraryPath", input1 + File.separator + libraryName);
             updateConfig("isFirstAccess", "false");
         } else {
-            System.out.println(RED + "Failed to create 'library' directory. The directory may already exist.\n" +
-                    RESET + "Do you want to use the pre-existing 'library' directory as the default path?\n" +
-                    "Keep in mind that any data present in the 'library' might be altered." + BLUE + "(y/n)" + RESET
+            System.out.println(RED + "Failed to create '" + libraryName + "' directory. The directory may already exist.\n" +
+                    RESET + "Do you want to use '" + libraryName + "' as the default path?\n" +
+                    "Keep in mind that any data present in '" + libraryName + "' might be altered." + BLUE + "(y/n)" + RESET
             );
             String input2 = scanner.nextLine();
             if (Objects.equals(input2, "yes") || Objects.equals(input2, "y")) {
-                updateConfig("libraryPath", input1 + File.separator + "library");
+                updateConfig("libraryPath", input1 + File.separator + libraryName);
                 updateConfig("isFirstAccess", "false");
 
             } else if (Objects.equals(input2, "no") || Objects.equals(input2, "n")) {
