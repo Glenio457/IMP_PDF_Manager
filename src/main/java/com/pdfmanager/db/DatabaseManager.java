@@ -90,6 +90,53 @@ public class DatabaseManager {
         //Map<String, Object> entry = JsonPath.from(dbPath).get("findAll { title == '" + field +  "'}");
     }
 
+    public void editFieldByTitle(File dbPath, String targetTitle) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        Scanner scanner = new Scanner(System.in);
+
+        ArrayNode db = (ArrayNode) mapper.readTree(dbPath);
+
+        String jsonContent = mapper.writeValueAsString(db);
+        JsonPath jsonPath = new JsonPath(jsonContent);
+
+        Map<String, Object> targetMap = jsonPath.getMap("find { it.title == '" + targetTitle + "' }");
+
+        if (targetMap == null) {
+            System.out.println(RED + "ERROR: No object found with title: " + targetTitle + RESET);
+            return;
+        }
+
+        System.out.print("Enter the field to edit (e.g., authors, path, subTitle):\n");
+        String field = scanner.nextLine();
+
+        if (!targetMap.containsKey(field)) {
+            System.out.println(RED + "ERROR: Field does not exist in '" + targetTitle + "'" + RESET);
+            return;
+        } else if (field.equals("title")) {
+            System.out.println(YELLOW + "You cannot edit the title of the file, try another field.\n" + RESET);
+            editFieldByTitle(dbPath, targetTitle);
+            return;
+        }
+
+        System.out.print("Enter the new value:\n");
+        String newValue = scanner.nextLine();
+
+        targetMap.put(field, newValue);
+
+        for (int i = 0; i < db.size(); i++) {
+            JsonNode node = db.get(i);
+            if (node.has("title") && node.get("title").asText().equals(targetTitle)) {
+                // Replace the node
+                db.set(i, mapper.convertValue(targetMap, JsonNode.class));
+                break;
+            }
+        }
+
+        mapper.writerWithDefaultPrettyPrinter().writeValue(dbPath, db);
+
+        System.out.println(GREEN + "Field updated successfully." + RESET);
+    }
+
     /**
      * This function writes a Java class (<i>Book</i>, <i>Slide</i> or <i>ClassNote</i>) to their
      * specific files in the database.

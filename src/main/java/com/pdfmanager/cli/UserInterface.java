@@ -86,6 +86,7 @@ public class UserInterface {
                     BLUE + "[2] " + RESET + "List files\n" +
                     BLUE + "[3] " + RESET + "Remove file\n" +
                     BLUE + "[4] " + RESET + "Change library\n" +
+                    BLUE + "[5] " + RESET + "Edit entry\n" +
                     // Other options
                     RED + "\n[0] " + RESET + "Quit program"
             );
@@ -104,6 +105,9 @@ public class UserInterface {
                     break;
                 case 4:
                     editLibraryPath();
+                    break;
+                case 5:
+                    editField();
                     break;
                 default: System.err.println("Invalid option: '" + input1 + "'"); break;
             }
@@ -324,6 +328,53 @@ public class UserInterface {
         }
     }
 
+    private void editField() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Which file type you wish to edit?\n" +
+                BLUE + "[1] " + RESET + "Book\n" +
+                BLUE + "[2] " + RESET + "Class note\n" +
+                BLUE + "[3] " + RESET + "Slide\n"
+        );
+        // Get file type
+        int input1;
+        try {
+            input1 = scanner.nextInt();
+            // Clean stdin buffer
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Invalid input value. Value should be a integer.");
+            System.err.flush();
+            return;
+        }
+        // Check invalid option
+        if (input1 != 1 && input1 != 2 && input1 != 3) {
+            System.err.println("Invalid option: '" + input1 + "'");
+            System.err.flush();
+            return;
+        }
+        // Get title
+        System.out.println("Type the name of the file you wish to edit.");
+        String fileName;
+        try {
+            fileName = scanner.nextLine();
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to read title from input stream.");
+            System.err.flush();
+            return;
+        }
+        File path;
+
+        if (input1 == 1) path = db.getBooksPath();
+        else if (input1 == 2) path = db.getClassNotesPath();
+        else path = db.getSlidesPath();
+
+        try {
+            db.editFieldByTitle(path, fileName);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void addToLibrary(String fileName, File dbPath) throws IOException {
         String path = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.path");
         String author = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.authors[0]");
@@ -388,13 +439,13 @@ public class UserInterface {
 
         for (Book book : bookList) {
             System.out.println(YELLOW + "#===============================================================#");
-            System.out.println(GREEN + "Type: Book" + RESET);
-            System.out.println(BLUE + "Title: " + book.getTitle() + RESET);
-            System.out.println(BLUE + "Subtitle: " + book.getSubTitle() + RESET);
-            System.out.println(BLUE + "Authors: " + book.getAuthors() + RESET);
-            System.out.println(BLUE + "Field of knowledge: " + book.getFieldOfKnowledge() + RESET);
-            System.out.println(BLUE + "Year: " + book.getPublishYear() + RESET);
-            System.out.println(BLUE + "Path: " + book.getPath() + RESET);
+            System.out.println(GREEN + "type: Book" + RESET);
+            System.out.println(BLUE + "title: " + book.getTitle() + RESET);
+            System.out.println(BLUE + "subTitle: " + book.getSubTitle() + RESET);
+            System.out.println(BLUE + "authors: " + book.getAuthors() + RESET);
+            System.out.println(BLUE + "fieldOfKnowledge: " + book.getFieldOfKnowledge() + RESET);
+            System.out.println(BLUE + "publishYear: " + book.getPublishYear() + RESET);
+            System.out.println(BLUE + "path: " + book.getPath() + RESET);
         }
     }
 
@@ -411,13 +462,13 @@ public class UserInterface {
 
         for (ClassNote classNote : classNoteList) {
             System.out.println(YELLOW + "#===============================================================#");
-            System.out.println(GREEN + "Type: Class note" + RESET);
-            System.out.println(BLUE + "Title: " + classNote.getTitle() + RESET);
-            System.out.println(BLUE + "Subtitle: " + classNote.getSubTitle() + RESET);
-            System.out.println(BLUE + "Authors: " + classNote.getAuthors() + RESET);
-            System.out.println(BLUE + "Lecture: " + classNote.getLectureName() + RESET);
-            System.out.println(BLUE + "Institution: " + classNote.getInstitutionName() + RESET);
-            System.out.println(BLUE + "Path: " + classNote.getPath() + RESET);
+            System.out.println(GREEN + "type: Class note" + RESET);
+            System.out.println(BLUE + "title: " + classNote.getTitle() + RESET);
+            System.out.println(BLUE + "subTitle: " + classNote.getSubTitle() + RESET);
+            System.out.println(BLUE + "authors: " + classNote.getAuthors() + RESET);
+            System.out.println(BLUE + "lectureName: " + classNote.getLectureName() + RESET);
+            System.out.println(BLUE + "institutionName: " + classNote.getInstitutionName() + RESET);
+            System.out.println(BLUE + "path: " + classNote.getPath() + RESET);
         }
     }
 
@@ -434,12 +485,12 @@ public class UserInterface {
 
         for (Slide slide : slideList) {
             System.out.println(YELLOW + "#===============================================================#");
-            System.out.println(GREEN + "Type: Slide" + RESET);
-            System.out.println(BLUE + "Title: " + slide.getTitle() + RESET);
-            System.out.println(BLUE + "Authors: " + slide.getAuthors() + RESET);
-            System.out.println(BLUE + "Lecture: " + slide.getLectureName() + RESET);
-            System.out.println(BLUE + "Institution: " + slide.getInstitutionName() + RESET);
-            System.out.println(BLUE + "Path: " + slide.getPath() + RESET);
+            System.out.println(GREEN + "type: Slide" + RESET);
+            System.out.println(BLUE + "title: " + slide.getTitle() + RESET);
+            System.out.println(BLUE + "authors: " + slide.getAuthors() + RESET);
+            System.out.println(BLUE + "lectureName: " + slide.getLectureName() + RESET);
+            System.out.println(BLUE + "institutionName: " + slide.getInstitutionName() + RESET);
+            System.out.println(BLUE + "path: " + slide.getPath() + RESET);
         }
     }
 
