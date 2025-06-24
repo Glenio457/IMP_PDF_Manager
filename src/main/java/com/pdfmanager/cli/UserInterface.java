@@ -158,6 +158,7 @@ public class UserInterface {
 
         try {
             String author = db.removeEntry(path, fileName, "authors[0]");
+            if (author == null) return;
             System.out.println(GREEN + "Successfully removed '" + fileName + "' from database." + RESET);
             String filePath = db.getLibraryPath() + File.separator + author + File.separator + fileName;
             fileManager.removeFile(new File(filePath));
