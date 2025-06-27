@@ -91,7 +91,6 @@ public class UserInterface {
                     RED + "\n[0] " + RESET + "Quit program"
             );
             input1 = scanner.nextInt();
-            // TODO: Implement options
             switch(input1) {
                 case 0: break;
                 case 1:
@@ -116,6 +115,9 @@ public class UserInterface {
         System.exit(0);
     }
 
+    /**
+     * Handles the remove file option logic.
+     */
     private void removeFile() {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Which file type you wish to remove?\n" +
@@ -156,7 +158,10 @@ public class UserInterface {
         else if (input1 == 2) path = db.getClassNotesPath();
         else path = db.getSlidesPath();
 
+        // Tries to remove the entry based on the gathered information.
         try {
+            // The first author is rescued from the removed entry so that the physical file can be
+            // located and deleted from the library (the file is inside a directory name by author[0]).
             String author = db.removeEntry(path, fileName, "authors[0]");
             if (author == null) return;
             System.out.println(GREEN + "Successfully removed '" + fileName + "' from database." + RESET);
@@ -168,6 +173,9 @@ public class UserInterface {
 
     }
 
+    /**
+     * Handles the add file option logic.
+     */
     private void addFile() {
         Map<String, Object> buffer = new HashMap<>();
         Scanner scanner = new Scanner(System.in);
@@ -313,6 +321,7 @@ public class UserInterface {
             buffer.put("institutionName", input2);
         }
 
+        // Tries to write the json object in the database, if successful, copies file to library.
         if (db.writeObject(buffer)) {
             String title = buffer.get("title").toString();
             String type = buffer.get("type").toString();
@@ -329,6 +338,9 @@ public class UserInterface {
         }
     }
 
+    /**
+     * Handles the edit field option logic.
+     */
     private void editField() {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Which file type you wish to edit?\n" +
@@ -376,6 +388,12 @@ public class UserInterface {
         }
     }
 
+    /**
+     * Copies a specific file from its path in the host computer to the library.
+     * @param fileName The name of the file to be copied (with extension).
+     * @param dbPath The database path.
+     * @throws IOException Might throw an exception if unable to manipulate files.
+     */
     private void addToLibrary(String fileName, File dbPath) throws IOException {
         String path = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.path");
         String author = JsonPath.from(dbPath).get("find { it.title == '" + fileName +  "'}.authors[0]");
@@ -385,6 +403,9 @@ public class UserInterface {
                 subDirectory +  File.separator + fileName);
     }
 
+    /**
+     * Handles the list files option.
+     */
     private void listFiles() {
         Scanner scanner = new Scanner(System.in);
         System.out.println("What files do you want to list?\n" +
@@ -427,6 +448,9 @@ public class UserInterface {
         }
     }
 
+    /**
+     * Prints books from the database.
+     */
     private void printBooks() {
         ObjectMapper mapper = new ObjectMapper();
         List<Book> bookList;
@@ -450,6 +474,9 @@ public class UserInterface {
         }
     }
 
+    /**
+     * Prints class notes from the database.
+     */
     private void printClassNotes() {
         ObjectMapper mapper = new ObjectMapper();
         List<ClassNote> classNoteList;
@@ -473,6 +500,9 @@ public class UserInterface {
         }
     }
 
+    /**
+     * Prints slides from the database.
+     */
     private void printSlides() {
         ObjectMapper mapper = new ObjectMapper();
         List<Slide> slideList;
@@ -496,7 +526,7 @@ public class UserInterface {
     }
 
     /**
-     * Edits the default library path
+     * Edits the default library path.
      */
     private void editLibraryPath() {
         System.out.println("\nPlease specify a valid path for your library:");
@@ -537,9 +567,9 @@ public class UserInterface {
     }
 
     /**
-     * Updates a database field with a specific value
-     * @param field Database field
-     * @param value Update value
+     * Updates a database field with a specific value.
+     * @param field Database field.
+     * @param value Update value.
      */
     private void updateConfig(String field, String value) {
         try {
@@ -551,9 +581,8 @@ public class UserInterface {
     }
 
     /**
-     * Check if it's the first time the user is executing the program
-     *
-     * @return Returns <i>true</i> if it's the first time and <i>false</i> otherwise
+     * Check if it's the first time the user is executing the program.
+     * @return Returns <i>true</i> if it's the first time and <i>false</i> otherwise.
      */
     public boolean checkFirstAccess() {
         try {

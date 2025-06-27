@@ -32,6 +32,10 @@ public class FileManager {
         }
     }
 
+    /**
+     * Removes a file from the library.
+     * @param file The file to be removed.
+     */
     public void removeFile(File file) {
         if (file.delete()) {
             System.out.println("File '" + file.getName() + "' has been deleted.");
