@@ -6,12 +6,14 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pdfmanager.files.Book;
 import com.pdfmanager.files.ClassNote;
+import com.pdfmanager.files.Collection; // Importação adicionada
 import com.pdfmanager.files.Slide;
 import io.restassured.path.json.JsonPath;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.pdfmanager.cli.UserInterface.*;
 
@@ -21,12 +23,15 @@ public class DatabaseManager {
     private final File booksPath;
     private final File slidesPath;
     private final File classNotesPath;
+    private final File collectionsPath; // Campo adicionado
 
     public DatabaseManager() {
         this.configPath = new File(Objects.requireNonNull(getClass().getResource("/config.json")).getPath());
         this.booksPath = new File(Objects.requireNonNull(getClass().getResource("/books.json")).getPath());
         this.slidesPath = new File(Objects.requireNonNull(getClass().getResource("/slides.json")).getPath());
         this.classNotesPath = new File(Objects.requireNonNull(getClass().getResource("/classnotes.json")).getPath());
+        // Ação necessária: Crie um arquivo 'collections.json' vazio em sua pasta 'resources'
+        this.collectionsPath = new File(Objects.requireNonNull(getClass().getResource("/collections.json")).getPath()); // Campo adicionado
     }
 
     /**
@@ -141,7 +146,7 @@ public class DatabaseManager {
      * This function writes a Java class (<i>Book</i>, <i>Slide</i> or <i>ClassNote</i>) to their
      * specific files in the database.
      * @param buffer Is a Map of parameters the user typed in, it is used to initialize the desired class.
-     *               The Map needs to contain a field <b>'type'</b> with the name of the class to be instanced.
+     * The Map needs to contain a field <b>'type'</b> with the name of the class to be instanced.
      */
     public boolean writeObject(Map<String, Object> buffer) {
         if (!buffer.containsKey("type")) {
@@ -165,6 +170,69 @@ public class DatabaseManager {
 
         return true;
     }
+    
+    // =================================================================================
+    // MÉTODOS ADICIONADOS PARA GERENCIAR COLEÇÕES
+    // =================================================================================
+    
+    /**
+     * Salva ou atualiza uma coleção no banco de dados.
+     * Se uma coleção com o mesmo nome já existir, ela será substituída.
+     * @param collection O objeto Collection a ser salvo.
+     * @throws IOException
+     */
+    public void saveCollection(Collection collection) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Collection> collections = getAllCollections();
+
+        // Remove a coleção antiga com o mesmo nome para substituí-la (update)
+        collections.removeIf(c -> c.getName().equalsIgnoreCase(collection.getName()));
+        collections.add(collection);
+
+        mapper.writerWithDefaultPrettyPrinter().writeValue(collectionsPath, collections);
+    }
+
+    /**
+     * Retorna uma coleção específica pelo nome.
+     * @param name Nome da coleção.
+     * @return O objeto Collection, ou null se não for encontrado.
+     * @throws IOException
+     */
+    public Collection getCollectionByName(String name) throws IOException {
+        return getAllCollections().stream()
+                .filter(c -> c.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Retorna todas as coleções do banco de dados.
+     * @return Uma lista de objetos Collection.
+     * @throws IOException
+     */
+    public List<Collection> getAllCollections() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        if (!collectionsPath.exists() || collectionsPath.length() == 0) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(Arrays.asList(mapper.readValue(collectionsPath, Collection[].class)));
+    }
+    
+    /**
+     * Remove uma coleção do banco de dados pelo nome.
+     * @param name Nome da coleção a ser removida.
+     * @throws IOException
+     */
+    public void deleteCollection(String name) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Collection> collections = getAllCollections();
+        
+        boolean removed = collections.removeIf(c -> c.getName().equalsIgnoreCase(name));
+        if (removed) {
+            mapper.writerWithDefaultPrettyPrinter().writeValue(collectionsPath, collections);
+        }
+    }
+
 
     @SuppressWarnings("unchecked")
     private void addBookToDB(Map<String, Object> buffer) {
@@ -181,6 +249,7 @@ public class DatabaseManager {
         book.setAuthors((List<String>) buffer.get("authors"));
         book.setSubTitle((String) buffer.get("subTitle"));
         book.setFieldOfKnowledge((String) buffer.get("fieldOfKnowledge"));
+        book.setPublisher((String) buffer.get("publisher")); // Campo adicionado
         try {
             book.setPublishYear(Integer.parseInt((String) buffer.get("publishYear")));
         } catch (Exception e) {
@@ -262,6 +331,11 @@ public class DatabaseManager {
 
     public File getClassNotesPath() {
         return classNotesPath;
+    }
+
+    // Getter adicionado
+    public File getCollectionsPath() {
+        return collectionsPath;
     }
 
     public String getLibraryPath() throws IOException {
