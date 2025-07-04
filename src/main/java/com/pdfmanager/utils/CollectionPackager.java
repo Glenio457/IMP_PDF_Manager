@@ -33,7 +33,7 @@ public class CollectionPackager {
                 // ASSUNÇÃO IMPORTANTE: O nome do arquivo físico não está salvo no modelo de dados.
                 // Estamos assumindo que o nome do arquivo é igual ao seu 'título' + a extensão ".pdf".
                 // Para maior robustez, o ideal seria adicionar um campo 'fileName' na classe Document.
-                String fileName = doc.getTitle() + ".pdf";
+                String fileName = doc.getTitle();
                 File fileToZip = new File(doc.getPath(), fileName);
 
                 if (!fileToZip.exists()) {
