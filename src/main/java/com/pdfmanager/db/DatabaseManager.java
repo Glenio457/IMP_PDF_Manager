@@ -72,6 +72,14 @@ public class DatabaseManager {
         mapper.writeValue(dbPath, object);
     }
 
+    /**
+     * Removes an entry from the database and returns a specific data from it.
+     * @param dbPath The database path.
+     * @param title The title of the file.
+     * @param info The field from which to get the return value.
+     * @return The data to be rescued from the database entry before deletion.
+     * @throws IOException Might throw an exception if unable to manipulate database.
+     */
     public String removeEntry(File dbPath, String title, String info) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode root = (ArrayNode) mapper.readTree(dbPath);
@@ -92,9 +100,14 @@ public class DatabaseManager {
         }
         mapper.writerWithDefaultPrettyPrinter().writeValue(dbPath, root);
         return data;
-        //Map<String, Object> entry = JsonPath.from(dbPath).get("findAll { title == '" + field +  "'}");
     }
 
+    /**
+     * Edits a specific field from an entry in the database.
+     * @param dbPath The database path.
+     * @param targetTitle The title of the targeted file in the database.
+     * @throws IOException Might throw an exception if unable to manipulate database.
+     */
     public void editFieldByTitle(File dbPath, String targetTitle) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         Scanner scanner = new Scanner(System.in);
@@ -234,6 +247,10 @@ public class DatabaseManager {
     }
 
 
+    /**
+     * Adds a book to the database.
+     * @param buffer A map with the information to be written in the database.
+     */
     @SuppressWarnings("unchecked")
     private void addBookToDB(Map<String, Object> buffer) {
         ObjectMapper mapper = new ObjectMapper();
@@ -266,6 +283,10 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Adds a slide to the database.
+     * @param buffer A map with the information to be written in the database.
+     */
     @SuppressWarnings("unchecked")
     private void addSlideToDB(Map<String, Object> buffer) {
         ObjectMapper mapper = new ObjectMapper();
@@ -291,6 +312,10 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Adds a class note to the database.
+     * @param buffer A map with the information to be written in the database.
+     */
     @SuppressWarnings("unchecked")
     private void addClassNoteToDB(Map<String, Object> buffer) {
         ObjectMapper mapper = new ObjectMapper();
