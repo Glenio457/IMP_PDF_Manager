@@ -5,13 +5,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pdfmanager.db.DatabaseManager;
 import com.pdfmanager.files.Book;
 import com.pdfmanager.files.ClassNote;
+import com.pdfmanager.files.Collection;
+import com.pdfmanager.files.DocumentType;
+import com.pdfmanager.files.Document;
 import com.pdfmanager.files.Slide;
+import com.pdfmanager.utils.BibTexGenerator;
+import com.pdfmanager.utils.CollectionPackager;
 import com.pdfmanager.utils.FileManager;
 import io.restassured.path.json.JsonPath;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
+
 
 public class UserInterface {
     private String isFirstAccess;
@@ -52,8 +61,7 @@ public class UserInterface {
      * Prints the available options to the user.
      */
     public void printOptions() {
-        // Check if this is the user's first access
-        if (checkFirstAccess()) { // If it's the first access do:
+        if (checkFirstAccess()) {
             System.out.println("\n$-----First access detected.-----$");
             editLibraryPath();
             try {
@@ -61,9 +69,8 @@ public class UserInterface {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }  // Otherwise do:
-        // Check if file path is valid
-        while(!fileManager.evaluatePath(libraryPath)) {
+        }
+        while (!fileManager.evaluatePath(libraryPath)) {
             System.out.println(RED + "\nLibrary directory not found" + RESET);
             editLibraryPath();
             try {
@@ -87,12 +94,21 @@ public class UserInterface {
                     BLUE + "[3] " + RESET + "Remove file\n" +
                     BLUE + "[4] " + RESET + "Change library\n" +
                     BLUE + "[5] " + RESET + "Edit entry\n" +
-                    // Other options
+                    BLUE + "[6] " + RESET + "Manage Collections\n" + // Opção Adicionada
                     RED + "\n[0] " + RESET + "Quit program"
             );
-            input1 = scanner.nextInt();
-            switch(input1) {
-                case 0: break;
+            try {
+                input1 = scanner.nextInt();
+            } catch (InputMismatchException e) {
+                System.err.println("Invalid input. Please enter a number.");
+                scanner.next(); // Limpa o buffer do erro
+                input1 = -1; // Reseta para evitar loop infinito
+                continue;
+            }
+
+            switch (input1) {
+                case 0:
+                    break;
                 case 1:
                     addFile();
                     break;
@@ -108,16 +124,429 @@ public class UserInterface {
                 case 5:
                     editField();
                     break;
-                default: System.err.println("Invalid option: '" + input1 + "'"); break;
+                case 6:
+                    handleCollectionsMenu(); // Método Adicionado
+                    break;
+                default:
+                    System.err.println("Invalid option: '" + input1 + "'");
+                    break;
             }
         }
         System.out.println("Exiting program.");
         System.exit(0);
     }
 
+    // =================================================================================
+    // MÉTODOS DE COLEÇÃO ADICIONADOS
+    // =================================================================================
+
     /**
-     * Handles the remove file option logic.
+     * Exibe o submenu para gerenciamento de coleções.
      */
+    private void handleCollectionsMenu() {
+        Scanner scanner = new Scanner(System.in);
+        int input = -1;
+        while (input != 0) {
+            System.out.println(BLUE + "\n--- Collections Menu ---\n" + RESET +
+                    "[1] Create new collection\n" +
+                    "[2] List collections\n" +
+                    "[3] Add entries to a collection\n" +
+                    "[4] Remove entries from a collection\n" +
+                    "[5] Generate BibTeX file from a Book collection\n" +
+                    "[6] Package a collection into a .zip file\n" +
+                    RED + "[0] Return to main menu" + RESET
+            );
+            try {
+                input = scanner.nextInt();
+                scanner.nextLine(); // Limpa o buffer
+            } catch (InputMismatchException e) {
+                System.err.println("Invalid input. Please enter a number.");
+                scanner.nextLine(); // Limpa o buffer do erro
+                input = -1; // Reseta para evitar loop infinito
+                continue;
+            }
+
+            switch (input) {
+                case 1:
+                    createCollection();
+                    break;
+                case 2:
+                    listCollections();
+                    break;
+                case 3:
+                    addEntryToCollection();
+                    break;
+                case 4:
+                    removeEntryFromCollection();
+                    break;
+                case 5:
+                    generateCollectionBibTex();
+                    break;
+                case 6:
+                    packageCollection();
+                    break;
+                case 0:
+                    break;
+                default:
+                    System.err.println("Invalid option.");
+            }
+        }
+    }
+
+    /**
+     * Lógica para criar uma nova coleção.
+     */
+    private void createCollection() {
+        Scanner scanner = new Scanner(System.in);
+        try {
+            System.out.println("--- Create New Collection ---");
+            System.out.print("Collection name: ");
+            String name = scanner.nextLine();
+            System.out.print("Author's name (must be one of the document's authors): ");
+            String author = scanner.nextLine();
+            System.out.print("Type (BOOK, SLIDE, or CLASS_NOTE): ");
+            DocumentType type = DocumentType.valueOf(scanner.nextLine().toUpperCase());
+
+            System.out.print("Maximum size: ");
+            int maxSize = scanner.nextInt();
+            scanner.nextLine();
+
+            // Lógica para encontrar documentos elegíveis
+            List<Document> eligibleDocs = findEligibleDocuments(author, type);
+            if (eligibleDocs.isEmpty()) {
+                System.out.println("No eligible documents found for this author and type.");
+                return;
+            }
+
+            System.out.println("\nAvailable documents by " + author + ":");
+            for (int i = 0; i < eligibleDocs.size(); i++) {
+                System.out.printf("[%d] %s%n", i + 1, eligibleDocs.get(i).getTitle());
+            }
+
+            System.out.println("\nEnter the numbers of the documents to add, separated by commas (e.g., 1,3,4):");
+            String[] selections = scanner.nextLine().split("\\s*,\\s*");
+            List<String> titles = new ArrayList<>();
+            for (String s : selections) {
+                int index = Integer.parseInt(s.trim()) - 1;
+                if (index >= 0 && index < eligibleDocs.size()) {
+                    titles.add(eligibleDocs.get(index).getTitle());
+                }
+            }
+
+            if (titles.size() > maxSize) {
+                System.err.println("Number of selected items exceeds the maximum size of the collection.");
+                return;
+            }
+
+            Collection newCollection = new Collection(name, author, type, maxSize, titles);
+            db.saveCollection(newCollection);
+            System.out.println(GREEN + "Collection '" + name + "' created successfully!" + RESET);
+
+        } catch (IOException e) {
+            System.err.println("Error processing documents: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid type entered. Please use BOOK, SLIDE, or CLASS_NOTE.");
+        } catch (InputMismatchException e) {
+            System.err.println("Invalid number format entered.");
+        }
+    }
+
+    /**
+     * Lista todas as coleções existentes.
+     */
+    private void listCollections() {
+        System.out.println(BLUE + "\n--- Existing Collections ---" + RESET);
+        try {
+            List<Collection> collections = db.getAllCollections();
+            if (collections.isEmpty()) {
+                System.out.println("No collections found.");
+                return;
+            }
+            for (Collection c : collections) {
+                System.out.println(YELLOW + "#=====================================#");
+                System.out.println(GREEN + "Name: " + c.getName() + RESET);
+                System.out.println(BLUE + "  Author: " + c.getAuthor());
+                System.out.println(BLUE + "  Type: " + c.getType());
+                System.out.println(BLUE + "  Size: " + c.getEntryTitles().size() + "/" + c.getMaxSize());
+                System.out.println(BLUE + "  Entries: " + c.getEntryTitles() + RESET);
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading collections: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Adiciona entradas a uma coleção existente.
+     */
+    private void addEntryToCollection() {
+        Scanner scanner = new Scanner(System.in);
+        try {
+            System.out.print("Enter the name of the collection to add to: ");
+            String collectionName = scanner.nextLine();
+            Collection collection = db.getCollectionByName(collectionName);
+
+            if (collection == null) {
+                System.err.println("Collection not found.");
+                return;
+            }
+
+            if (collection.getEntryTitles().size() >= collection.getMaxSize()) {
+                System.err.println("Collection is already full.");
+                return;
+            }
+
+            List<Document> eligibleDocs = findEligibleDocuments(collection.getAuthor(), collection.getType());
+            // Remove docs already in the collection
+            eligibleDocs.removeIf(doc -> collection.getEntryTitles().contains(doc.getTitle()));
+
+            if (eligibleDocs.isEmpty()) {
+                System.out.println("No new documents available to add.");
+                return;
+            }
+
+            System.out.println("\nAvailable documents to add:");
+            for (int i = 0; i < eligibleDocs.size(); i++) {
+                System.out.printf("[%d] %s%n", i + 1, eligibleDocs.get(i).getTitle());
+            }
+
+            System.out.println("\nEnter the numbers of the documents to add, separated by commas:");
+            String[] selections = scanner.nextLine().split("\\s*,\\s*");
+            List<String> titlesToAdd = new ArrayList<>();
+            for (String s : selections) {
+                int index = Integer.parseInt(s.trim()) - 1;
+                if (index >= 0 && index < eligibleDocs.size()) {
+                    titlesToAdd.add(eligibleDocs.get(index).getTitle());
+                }
+            }
+
+            if (collection.getEntryTitles().size() + titlesToAdd.size() > collection.getMaxSize()) {
+                System.err.println("Adding these items would exceed the collection's max size.");
+                return;
+            }
+
+            collection.getEntryTitles().addAll(titlesToAdd);
+            db.saveCollection(collection);
+            System.out.println(GREEN + "Entries added successfully." + RESET);
+
+        } catch (Exception e) {
+            System.err.println("An error occurred: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Remove uma entrada de uma coleção. Se a coleção ficar vazia, ela é removida.
+     */
+    private void removeEntryFromCollection() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the name of the collection to edit: ");
+        String collectionName = scanner.nextLine();
+
+        try {
+            Collection collection = db.getCollectionByName(collectionName);
+            if (collection == null) {
+                System.err.println("Collection not found.");
+                return;
+            }
+            System.out.println("Entries in this collection: " + collection.getEntryTitles());
+            System.out.print("Enter the exact title to remove: ");
+            String titleToRemove = scanner.nextLine();
+
+            boolean removed = collection.getEntryTitles().remove(titleToRemove);
+
+            if (removed) {
+                if (collection.getEntryTitles().isEmpty()) {
+                    db.deleteCollection(collection.getName());
+                    System.out.println(YELLOW + "Entry removed. Collection is now empty and has been deleted." + RESET);
+                } else {
+                    db.saveCollection(collection);
+                    System.out.println(GREEN + "Entry removed successfully." + RESET);
+                }
+            } else {
+                System.err.println("Title not found in the collection.");
+            }
+        } catch (IOException e) {
+            System.err.println("Error processing collection: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gera um arquivo BibTeX a partir de uma coleção de livros.
+     */
+    private void generateCollectionBibTex() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the name of the Book collection: ");
+        String collectionName = scanner.nextLine();
+
+        try {
+            Collection collection = db.getCollectionByName(collectionName);
+            if (collection == null || collection.getType() != DocumentType.BOOK) {
+                System.err.println("Book collection not found.");
+                return;
+            }
+            System.out.print("Enter the full output path (e.g., C:/Users/Me/Desktop/references.bib): ");
+            Path outputPath = Paths.get(scanner.nextLine());
+
+            // CORREÇÃO: Lê o arquivo de livros usando a classe correta (Book)
+            ObjectMapper mapper = new ObjectMapper();
+            List<Book> allBooks = mapper.readValue(db.getBooksPath(), new TypeReference<List<Book>>() {});
+
+            // Filtra para obter apenas os livros que estão na coleção
+            List<Book> collectionBooks = allBooks.stream()
+                    .filter(book -> collection.getEntryTitles().contains(book.getTitle()))
+                    .collect(Collectors.toList());
+
+            if (collectionBooks.isEmpty()) {
+                System.err.println("No valid book entries found in the database for this collection.");
+                return;
+            }
+
+            BibTexGenerator.generate(collection, collectionBooks, outputPath);
+            System.out.println(GREEN + "BibTeX file generated successfully at " + outputPath + RESET);
+
+        } catch (IOException e) {
+            System.err.println("Error generating BibTeX file: " + e.getMessage());
+            e.printStackTrace(); // Ajuda a depurar
+        }
+    }
+
+    /**
+     * Empacota os arquivos de uma coleção em um arquivo .zip. (VERSÃO CORRIGIDA)
+     */
+    private void packageCollection() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the collection name to package: ");
+        String collectionName = scanner.nextLine();
+
+        try {
+            Collection collection = db.getCollectionByName(collectionName);
+            if (collection == null) {
+                System.err.println("Collection not found.");
+                return;
+            }
+            System.out.print("Enter the full output path for the zip file (e.g., C:/Users/Me/Desktop/package.zip): ");
+            Path outputPath = Paths.get(scanner.nextLine());
+
+            ObjectMapper mapper = new ObjectMapper();
+            List<Document> documentsToPack = new ArrayList<>();
+            List<String> titles = collection.getEntryTitles();
+
+            // CORREÇÃO: Determina o tipo de documento e o lê do arquivo JSON correto
+            // usando a classe específica (Book, Slide, etc.)
+            switch (collection.getType()) {
+                case BOOK:
+                    List<Book> allBooks = mapper.readValue(db.getBooksPath(), new TypeReference<List<Book>>() {});
+                    allBooks.stream()
+                            .filter(doc -> titles.contains(doc.getTitle()))
+                            .forEach(documentsToPack::add);
+                    break;
+                case SLIDE:
+                    List<Slide> allSlides = mapper.readValue(db.getSlidesPath(), new TypeReference<List<Slide>>() {});
+                    allSlides.stream()
+                            .filter(doc -> titles.contains(doc.getTitle()))
+                            .forEach(documentsToPack::add);
+                    break;
+                case CLASS_NOTE:
+                    List<ClassNote> allNotes = mapper.readValue(db.getClassNotesPath(), new TypeReference<List<ClassNote>>() {});
+                    allNotes.stream()
+                            .filter(doc -> titles.contains(doc.getTitle()))
+                            .forEach(documentsToPack::add);
+                    break;
+            }
+
+            if (documentsToPack.isEmpty()) {
+                System.err.println("No valid document entries found in the database for this collection.");
+                return;
+            }
+
+            CollectionPackager.pack(documentsToPack, outputPath);
+
+        } catch (IOException e) {
+            System.err.println("Error packaging collection: " + e.getMessage());
+            e.printStackTrace(); // Ajuda a depurar
+        }
+    }
+
+    /**
+     * Helper to simplify user text input prompts.
+     * @param message The message to display to the user.
+     * @return The user's input.
+     */
+    private String prompt(String message) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println(message);
+        return scanner.nextLine();
+    }
+
+    /**
+     * Helper method to find documents eligible for adding to a collection.
+     * @param author The author's name.
+     * @param type The type of document.
+     * @return A list of eligible documents.
+     * @throws IOException
+     */
+    private List<Document> findEligibleDocuments(String author, DocumentType type) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Document> eligibleDocs = new ArrayList<>();
+
+        switch (type) {
+            case BOOK:
+                List<Book> books = mapper.readValue(db.getBooksPath(), new TypeReference<>() {});
+                books.stream()
+                        .filter(doc -> doc.getAuthors().contains(author))
+                        .forEach(eligibleDocs::add);
+                break;
+            case SLIDE:
+                List<Slide> slides = mapper.readValue(db.getSlidesPath(), new TypeReference<>() {});
+                slides.stream()
+                        .filter(doc -> doc.getAuthors().contains(author))
+                        .forEach(eligibleDocs::add);
+                break;
+            case CLASS_NOTE:
+                List<ClassNote> notes = mapper.readValue(db.getClassNotesPath(), new TypeReference<>() {});
+                notes.stream()
+                        .filter(doc -> doc.getAuthors().contains(author))
+                        .forEach(eligibleDocs::add);
+                break;
+        }
+        return eligibleDocs;
+    }
+
+    /**
+     * Generic helper to retrieve full document objects from a collection's list of titles.
+     * @param collection The collection object.
+     * @param docClass The class type of the documents to retrieve (e.g., Book.class).
+     * @return A list of document objects.
+     * @throws IOException
+     */
+    @SuppressWarnings("unchecked")
+    private <T extends Document> List<T> getDocumentsFromCollection(Collection collection, Class<T> docClass) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        File dbPath;
+        TypeReference<List<T>> typeRef;
+
+        switch (collection.getType()) {
+            case BOOK:
+                dbPath = db.getBooksPath();
+                typeRef = new TypeReference<>() {};
+                break;
+            case SLIDE:
+                dbPath = db.getSlidesPath();
+                typeRef = new TypeReference<>() {};
+                break;
+            case CLASS_NOTE:
+                dbPath = db.getClassNotesPath();
+                typeRef = new TypeReference<>() {};
+                break;
+            default:
+                return new ArrayList<>();
+        }
+
+        List<T> allDocs = mapper.readValue(dbPath, typeRef);
+        return allDocs.stream()
+                .filter(doc -> collection.getEntryTitles().contains(doc.getTitle()))
+                .collect(Collectors.toList());
+    }
+
     private void removeFile() {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Which file type you wish to remove?\n" +
